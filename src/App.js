@@ -4,6 +4,7 @@ import './App.css';
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.css';
 import $ from 'jquery';
+import ReactHTMLTableToExcel from 'react-html-table-to-excel';
 
 let xml = require('./out.xml');
 let screenShot = require('./screenshot.png');
@@ -34,7 +35,7 @@ class App extends Component {
 
   constructor(props) {
     super(props);
-    this.state = {properties:[], selectedProps:[], width: '', height: '', nodeProperties:[],coordinates:''};
+    this.state = { properties:[], selectedProps:[], width: '', height: '', nodeProperties:[],coordinates:'', user_actions:[] };
   }
 
   componentDidMount() {
@@ -88,8 +89,22 @@ class App extends Component {
   }
 
   liClick = (data,index) => {
-    $("#svgContainer #"+index+"").css({'opacity':0.5});
-    this.setState({selectedProps:data});
+      let actions=[];
+      let c= data.text;
+      actions['element'] = "li Click";
+      (c)? actions['text'] = c : actions['text']=data.package;
+      this.setState({selectedProps:data});
+      this.setState((state) => { user_actions: state.user_actions.push(actions); });
+  }
+
+
+  imageClick = (data,index) => {
+      let actions=[];
+       let c= data.text;
+      actions['element'] = "Image Click";
+      (c)? actions['text'] = c : actions['text']=data.package;
+      this.setState({selectedProps:data});
+      this.setState((state) => { user_actions: state.user_actions.push(actions); });
   }
 
   onImgLoad = ({target:img}) => {
@@ -105,7 +120,7 @@ class App extends Component {
         var splitBounds = bounds.split(',');
         width = (splitBounds[2] - splitBounds[0])*Number(resizeWidth);
         height = (splitBounds[3] - splitBounds[1])*Number(resizeHeight);
-        return <rect id={key} onMouseOver={()=>this.mouseEnter(key)} onClick={()=>this.liClick(obj,key)} key={key} x={splitBounds[0]*resizeWidth} y={splitBounds[1]*resizeHeight} width={width} height={height} style={divStyle} />
+        return <rect id={key} onMouseOver={()=>this.mouseEnter(key)} onClick={()=>this.imageClick(obj,key)} key={key} x={splitBounds[0]*resizeWidth} y={splitBounds[1]*resizeHeight} width={width} height={height} style={divStyle} />
       })
     )
   }
@@ -115,32 +130,56 @@ class App extends Component {
     let {image,imgContainer} = styles;
 
     let selectedProps = this.state.selectedProps;
+    let user_actions=this.state.user_actions;
 
     return (
       <div className="container">
         <div className="row">
           <div className="col-sm-6" id="screen">
-            <img onLoad={this.onImgLoad} alt="screenshot" src={screenShot} style={image}/>
-            <svg id="svgContainer" style={imgContainer}>
-              {this.state.coordinates}
-            </svg>
+             <img onLoad={this.onImgLoad} alt="screenshot" src={screenShot} style={image}/>
+              <svg id="svgContainer" style={imgContainer}>
+                {this.state.coordinates}
+              </svg>
           </div>
           <div className="col-sm-6">
             <ul>{this.state.properties}</ul>
-			<div className="row">
-          <table className="table table-bordered">
-            <tbody>
-              {
-                Object.keys(selectedProps).map(function(propName, propIndex) {
-                  return <tr key={propIndex}><td>{propName}</td><td>{selectedProps[propName]}</td></tr>
-                })
-              }
-            </tbody>
-          </table>
-        </div>
           </div>
         </div>
-
+        <div className="row">
+          <div className="col-sm-6">
+            <ReactHTMLTableToExcel
+                    id="test-table-xls-button"
+                    className="download-table-xls-button"
+                    table="table-to-xls"
+                    filename="tablexls"
+                    sheet="tablexls"
+                    buttonText="Download as XLS"/>
+            <table id="table-to-xls" className="table table-bordered">
+              <thead>
+              <th> Action</th>
+              <th> Widget</th>
+              </thead>
+              <tbody>
+                {
+                  Object.keys(user_actions).map(function(obj,i) {
+                    return <tr key={i}><td>{user_actions[obj].element}</td><td>{user_actions[obj].text}</td></tr>
+                  })
+                }
+              </tbody>
+            </table>
+          </div>
+          <div className="col-sm-6">
+            <table className="table table-bordered">
+              <tbody>
+                {
+                  Object.keys(selectedProps).map(function(propName, propIndex) {
+                    return <tr key={propIndex}><td>{propName}</td><td>{selectedProps[propName]}</td></tr>
+                  })
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     );
   }
